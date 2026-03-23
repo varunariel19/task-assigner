@@ -1,0 +1,50 @@
+  <form (ngSubmit)="submit()" class="space-y-4" #ticketForm="ngForm">
+
+  <input [(ngModel)]="formData.title" name="title" required placeholder="Ticket title"
+    class="w-full border p-2 rounded-lg" />
+  <div *ngIf="ticketForm.submitted && !formData.title" class="text-red-500 text-sm">
+    Title is required
+  </div>
+
+  <textarea [(ngModel)]="formData.description" name="description" placeholder="Description"
+    class="w-full border p-2 rounded-lg"></textarea>
+
+  <div class="grid grid-cols-2 gap-3">
+
+    <select [(ngModel)]="formData.type" name="type" class="border p-2 rounded-lg">
+      <option>BUG</option>
+      <option>FEATURE</option>
+      <option>TASK</option>
+    </select>
+
+    <select [(ngModel)]="formData.status" name="status" required class="border p-2 rounded-lg">
+      <option value="" disabled>Select status</option>
+      <option *ngFor="let option of options" [value]="option">{{ option }}</option>
+    </select>
+    <div *ngIf="ticketForm.submitted && !formData.status" class="text-red-500 text-sm">
+      Status is required
+    </div>
+
+    <select [(ngModel)]="formData.priority" name="priority" class="border p-2 rounded-lg">
+      <option *ngFor="let p of priority" [value]="p.value">{{ p.label }}</option>
+    </select>
+
+    <select [(ngModel)]="formData.assignToId" name="assignToId" required class="border p-2 rounded-lg">
+      <option value="" disabled>Select user</option>
+      <option *ngFor="let user of store.users()" [value]="user.id">
+        {{ user.username }}
+      </option>
+    </select>
+    
+    <div *ngIf="ticketForm.submitted && !formData.assignToId" class="text-red-500 text-sm">
+      Assigned user is required
+    </div>
+  </div>
+
+  <!-- Submit Button -->
+  <button type="submit" [disabled]="!formData.title || !formData.assignToId || !formData.status"
+    class="w-full bg-blue-600 text-white py-2 rounded-xl hover:bg-blue-700 disabled:opacity-50">
+    Create Ticket
+  </button>
+
+</form>

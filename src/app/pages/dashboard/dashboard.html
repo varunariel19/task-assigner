@@ -1,0 +1,115 @@
+<header class="bg-white shadow sticky top-0 z-50">
+  <div class="max-w-7xl mx-auto px-6 py-4 flex justify-between items-center">
+    <h1 class="text-2xl font-bold text-gray-800">{{ appName() }}</h1>
+
+    <div class="flex items-center gap-4">
+      <ng-container *ngIf="isLoggedIn(); else guestUI">
+
+        <ng-container *ngIf="isAdmin(); else userUI">
+          <button (click)="openModal()" class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700">
+            + Create Ticket
+          </button>
+
+          <button (click)="store.handleLogout()" class="bg-gray-200 px-4 py-2 rounded-lg hover:bg-gray-300">
+            Logout
+          </button>
+        </ng-container>
+
+      </ng-container>
+
+      <!-- USER -->
+      <ng-template #userUI>
+        <button routerLink="/my-tickets" class="bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700">
+          My Tickets
+        </button>
+
+        <button (click)="store.handleLogout()" class="bg-gray-200 px-4 py-2 rounded-lg hover:bg-gray-300">
+          Logout
+        </button>
+      </ng-template>
+
+      <!-- GUEST -->
+      <ng-template #guestUI>
+        <button routerLink="/login" class="bg-green-100 px-4 py-2 rounded-lg hover:bg-green-400">
+          Login
+        </button>
+
+        <button routerLink="/register" class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700">
+          Sign Up
+        </button>
+      </ng-template>
+    </div>
+  </div>
+</header>
+
+<div class="p-6 overflow-x-auto">
+  <div class="flex items-center gap-4 bg-white shadow-md rounded-xl px-4 py-3 mb-4">
+
+    <div class="flex items-center gap-2 text-gray-600 font-medium">
+      <fa-icon [icon]="appIcons.search"></fa-icon>
+      <span>Filter by user</span>
+    </div>
+
+    <select class="border border-gray-300 rounded-lg px-4 py-2 bg-gray-50 hover:bg-white">
+      <option value="ALL">All Tickets</option>
+      <option *ngFor="let user of store.users()" [value]="user.id">
+        {{ user.username }}
+      </option>
+    </select>
+
+    <button class="ml-auto bg-gray-100 text-gray-700 px-4 py-2 rounded-lg hover:bg-red-500 hover:text-white">
+      Clear Filters
+    </button>
+  </div>
+
+  <div cdkDropListGroup class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6 min-w-[1100px] min-h-[600px]">
+
+    <div *ngFor="let col of store.columns" class="bg-gray-50 rounded-xl p-4">
+
+      <h2 class="font-semibold text-gray-700 mb-4">
+        {{ col.label }}
+      </h2>
+
+      <div cdkDropList [id]="col.key" [cdkDropListData]="store.aisles()[col.key]"
+        [cdkDropListConnectedTo]="store.connectedLists" (cdkDropListDropped)="drop($event, col.key)"
+        class="space-y-3 min-h-[200px]">
+
+        <div *ngFor="let ticket of store.aisles()[col.key]; trackBy: trackByTicket" cdkDrag
+          (click)="viewTicket(ticket.taskId)"
+          class="bg-white rounded-xl p-4 transition-all duration-300 hover:scale-105 hover:shadow-xl">
+          <div class="flex justify-between mb-2">
+            <span class="text-xs px-2 py-1 rounded" [ngClass]="store.getPriorityClasses(ticket.priority)">
+              {{ store.PRIORITY_MAP[ticket.priority] }}
+            </span>
+
+            <span class="text-xs text-gray-400">
+              #AS-{{ ticket.ticketId }}
+            </span>
+          </div>
+
+          <h3 class="font-semibold mb-2">
+            {{ ticket?.title | slice:0:50 }}{{ (ticket?.title?.length ?? 0) > 50 ? '...' : '' }}
+          </h3>
+
+          <!-- <p class="text-sm text-gray-500 mb-3">
+            {{ ticket?.description | slice:0:100 }}{{ (ticket?.description?.length ?? 0) > 100 ? '...' : '' }}
+          </p> -->
+
+          <div class="flex justify-between items-center">
+            <span class="text-xs bg-blue-100 text-blue-600 px-2 py-1 rounded">
+              {{ ticket.type }}
+            </span>
+
+            <img class="w-8 h-8 rounded-full" [src]="ticket?.assignedUser?.avatar || 'https://i.pravatar.cc/150?img=3'"/>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+  </div>
+
+  <app-modal></app-modal>
+  <view-ticket-modal></view-ticket-modal>
+
+</div>

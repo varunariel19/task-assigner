@@ -1,0 +1,76 @@
+<div class="min-h-screen flex items-center justify-center bg-slate-100">
+    <div class="w-full max-w-md bg-white p-8 rounded-2xl shadow-lg">
+
+        <h2 class="text-3xl font-bold text-center mb-2">Welcome Back</h2>
+        <p class="text-gray-500 text-center mb-6">Create an account</p>
+
+        <form [formGroup]="RegisterationForm" (ngSubmit)="submit()" class="space-y-4">
+
+            <div>
+                <label class="text-sm font-medium">Username</label>
+                <input type="text" formControlName="username" placeholder="enter your username"
+                    class="w-full mt-1 border rounded-lg p-2 focus:ring-2 focus:ring-blue-500 outline-none" />
+
+                <p class="text-red-500 text-sm mt-1"
+                    *ngIf="RegisterationForm.controls.username.touched && RegisterationForm.controls.username.invalid">
+                    username required
+                </p>
+            </div>
+
+            <div>
+                <label class="text-sm font-medium">Email</label>
+                <input type="email" formControlName="email" placeholder="you@email.com"
+                    class="w-full mt-1 border rounded-lg p-2 focus:ring-2 focus:ring-blue-500 outline-none" />
+
+                <p class="text-red-500 text-sm mt-1"
+                    *ngIf="RegisterationForm.controls.email.touched && RegisterationForm.controls.email.invalid">
+                    Enter a valid email
+                </p>
+            </div>
+
+            <div>
+                <label class="text-sm font-medium">Password</label>
+                <input type="password" formControlName="password" placeholder="••••••••"
+                    class="w-full mt-1 border rounded-lg p-2 focus:ring-2 focus:ring-blue-500 outline-none" />
+
+                <p class="text-red-500 text-sm mt-1"
+                    *ngIf="RegisterationForm.controls.password.touched && RegisterationForm.controls.password.invalid">
+                    Password must be at least 6 characters
+                </p>
+            </div>
+
+            <!-- Remember + Forgot -->
+            <div class="flex items-center justify-between text-sm">
+                <label class="flex items-center gap-2">
+                    <input type="checkbox" formControlName="remember">
+                    Remember me
+                </label>
+
+                <a class="text-blue-600 hover:underline cursor-pointer">Forgot password?</a>
+            </div>
+
+            <!-- Error -->
+            <div *ngIf="errorMsg()" class="text-red-500 text-sm text-center">
+                {{ errorMsg() }}
+            </div>
+
+            <!-- Button -->
+            <button [disabled]="loading()"
+                class="w-full bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700 transition disabled:bg-gray-400">
+
+                <span *ngIf="!loading()">Sign up</span>
+                <span *ngIf="loading()">Signing in...</span>
+            </button>
+
+        </form>
+
+        <!-- Footer -->
+        <p class="text-center text-sm text-gray-500 mt-6">
+            Already have an account?
+            <a href="/login" class="text-blue-600 cursor-pointer hover:underline">
+                Login
+            </a>
+        </p>
+
+    </div>
+</div>

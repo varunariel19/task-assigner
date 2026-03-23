@@ -1,0 +1,100 @@
+<div class="min-h-screen bg-slate-950 text-white overflow-hidden">
+
+  <!-- NAVBAR -->
+  <nav class="flex justify-between items-center px-8 py-6 max-w-7xl mx-auto">
+    <a href="/" class="text-2xl cursor-pointer font-bold tracking-wide">{{appName()}}</a>
+
+    <div class="space-x-6 hidden md:block">
+      <a href="/login" class="text-slate-300 hover:text-white cursor-pointer">Login</a>
+      <a href="/register" class="text-slate-300 hover:text-white cursor-pointer">Sign Up</a>
+      <button class="text-slate-300 hover:text-white">Pricing</button>
+      <button class="bg-indigo-600 px-5 py-2 rounded-lg hover:bg-indigo-500 transition">
+        Get Started
+      </button>
+    </div>
+  </nav>
+
+  <!-- HERO -->
+  <section class="text-center mt-16 px-6">
+    <div class="max-w-4xl mx-auto">
+      <h2 class="text-5xl md:text-6xl font-extrabold leading-tight">
+        Organize Work. <br />
+        <span class="text-indigo-400">Finish Faster.</span>
+      </h2>
+
+      <p class="mt-6 text-slate-400 text-lg">
+        {{appName()}} helps teams plan, track and deliver projects effortlessly.
+        Simple, fast and beautifully designed.
+      </p>
+
+      <div class="mt-10 flex justify-center gap-4">
+        <button class="bg-indigo-600 px-8 py-4 rounded-xl text-lg font-semibold hover:bg-indigo-500 transition">
+          Start Free Trial
+        </button>
+
+        <button class="border border-slate-600 px-8 py-4 rounded-xl text-lg hover:bg-slate-800 transition">
+          Watch Demo
+        </button>
+      </div>
+    </div>
+
+    <!-- TASK CARD -->
+    <div class="mt-20 flex justify-center">
+      <div class="bg-slate-900/70 backdrop-blur-lg border border-slate-800 rounded-2xl p-8 w-[350px] shadow-2xl">
+        <h3 class="text-xl font-semibold mb-4">Today's Tasks</h3>
+
+        <ul class="space-y-3 text-left">
+          <li *ngFor="let task of tasks" class="bg-slate-800 p-3 rounded-lg">
+            {{task}}
+          </li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- FEATURES -->
+  <section class="mt-32 px-6">
+    <div class="max-w-6xl mx-auto text-center">
+      <h3 class="text-4xl font-bold">Why {{appName()}}?</h3>
+      <p class="text-slate-400 mt-4">
+        Everything you need to manage tasks efficiently
+      </p>
+
+      <div class="grid md:grid-cols-3 gap-8 mt-14">
+        <div *ngFor="let item of features"
+          class="bg-slate-900 border border-slate-800 rounded-2xl p-8 hover:border-indigo-500 transition">
+          <h4 class="text-xl font-semibold mb-3">{{item.title}}</h4>
+          <p class="text-slate-400">{{item.desc}}</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- HOW IT WORKS -->
+  <section class="mt-32 px-6 text-center">
+    <h3 class="text-4xl font-bold">How it works</h3>
+
+    <div class="grid md:grid-cols-3 gap-10 mt-14 max-w-6xl mx-auto">
+      <div *ngFor="let step of steps; let i = index">
+        <div class="bg-indigo-600 w-14 h-14 rounded-full flex items-center justify-center text-xl font-bold mx-auto">
+          {{ i + 1 }}
+        </div>
+        <p class="mt-4 text-slate-300">{{step}}</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- CTA -->
+  <section class="mt-32 text-center pb-20">
+    <h3 class="text-4xl font-bold">Ready to boost productivity?</h3>
+    <button class="mt-8 bg-indigo-600 px-10 py-4 rounded-xl text-lg hover:bg-indigo-500 transition">
+      Get Started For Free
+    </button>
+  </section>
+
+  <!-- FOOTER -->
+  <footer class="border-t border-slate-800 py-8 text-center text-slate-500">
+    © 2026 {{appName()}}. All rights reserved.
+  </footer>
+
+</div>

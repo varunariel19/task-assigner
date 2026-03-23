@@ -1,0 +1,367 @@
+@if (isOpen() && ticketInfo() != null) {
+
+<div class="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm flex justify-center items-start pt-16">
+
+    <div class="w-[1050px] max-w-[95%] h-[85vh] bg-[#F4F5F7] rounded-lg shadow-2xl overflow-hidden flex">
+
+        <div class="flex-1 bg-white p-8 overflow-y-auto">
+
+            <div class="flex items-start justify-between mb-6">
+                <div class="flex items-center gap-4">
+
+                    <img [src]="ticketInfo()?.assignedUser?.avatar || 'https://i.pravatar.cc/150?img=3'"
+                        class="w-10 h-10 rounded-full" />
+
+                    <div class="flex flex-col gap-1 w-full">
+
+                        @if(!isEditing()){
+                        <h1 class="text-2xl font-semibold text-gray-900 leading-snug">
+                            {{ ticketInfo()?.title }}
+                        </h1>
+                        } @else {
+                        <input [value]="ticketInfo()?.title" (input)="handleOnChange('title',$event)"
+                            class="w-full min-w-[500px] text-2xl font-semibold border px-3 py-2 rounded-md" />
+                        }
+
+                        <span class="text-sm text-gray-500">
+                            {{ ticketInfo()?.ticketId }}
+                        </span>
+
+                    </div>
+                </div>
+
+            </div>
+
+
+            <div class="flex gap-2 mb-8">
+                <span class="px-3 py-1 text-xs rounded bg-blue-100 text-blue-700">
+                    {{ ticketInfo()?.status }}
+                </span>
+                <span class="px-3 py-1 text-xs rounded bg-purple-100 text-purple-700">
+                    {{ ticketInfo()?.type }}
+                </span>
+                <span class="text-xs px-2 py-1 rounded" [ngClass]="store.getPriorityClasses(ticketInfo()?.priority!)">
+                    {{ store.PRIORITY_MAP[ticketInfo()?.priority!] }}
+                </span>
+            </div>
+
+            <div class="mb-10">
+                <h3 class="text-sm font-semibold text-gray-600 uppercase mb-3">Description</h3>
+
+                @if(!isEditing()){
+                <div class="overflow-auto" [innerHTML]="ticketInfo()?.description"></div>
+                } @else {
+                <app-ticket-editor [htmlContent]="ticketInfo()!.description"></app-ticket-editor>
+                }
+
+            </div>
+
+            <!-- EDIT BUTTON -->
+            <div class="border-b border-gray-300 pb-6 flex justify-end gap-3">
+                @if(CheckCanEditDesc()) {
+                @if(!isEditing()){
+                <button (click)="startEditing()" class="px-4 py-2 bg-gray-900 text-white rounded-md hover:bg-black">
+                    Edit
+                </button>
+                } @else {
+                <button (click)="handleUpdateTicket()" class="px-4 py-2 bg-gray-900 text-white rounded-md">
+                    Save
+                </button>
+
+                <button (click)="isEditing.set(false)" class="px-4 py-2 border rounded-md">
+                    Cancel
+                </button>
+                }
+                }
+            </div>
+
+
+            <div class="mt-10">
+                <div class="relative rounded-2xl p-px" [ngClass]="{
+                            'ai-glow': isGeneratingSummary(),
+                            'bg-gray-200': !isGeneratingSummary()
+                        }">
+                    <div class="bg-white rounded-2xl p-6">
+
+                        <div class="flex items-center justify-between mb-4">
+                            <div class="flex items-center gap-2">
+                                <div class="w-2.5 h-2.5 rounded-full bg-purple-500"></div>
+                                <h3 class="font-semibold text-gray-800">AI Summary</h3>
+                            </div>
+
+                            <button [disabled]="isGeneratingSummary()" (click)="generateSummary()"
+                                class="text-xs px-3 py-1.5 rounded-md border hover:bg-gray-50 transition">
+                                Generate
+                            </button>
+                        </div>
+
+                        @if(isGeneratingSummary()){
+                        <div class="space-y-3">
+                            <div class="h-3 bg-gray-200 rounded shimmer w-5/6"></div>
+                            <div class="h-3 bg-gray-200 rounded shimmer w-4/6"></div>
+                            <div class="h-3 bg-gray-200 rounded shimmer w-3/6"></div>
+                            <div class="text-xs text-gray-400 mt-3 flex items-center gap-2">
+                                <span class="animate-pulse">●</span> Generating summary...
+                            </div>
+                        </div>
+
+                        }@else {
+
+                        @if(summaryPoints().length == 0){
+                        <p class="text-gray-400 text-sm italic">
+                            Click generate to create an AI summary of this ticket.
+                        </p>
+
+                        }@else {
+                        <ul class="list-disc pl-5 space-y-2 text-gray-700 text-sm">
+                            <li *ngFor="let point of summaryPoints()">
+                                {{ point }}
+                            </li>
+                        </ul>
+
+                        }
+
+                        }
+
+                    </div>
+                </div>
+            </div>
+
+
+
+
+            <!-- COMMENTS -->
+            <div class="mt-10">
+
+                <div class="space-y-4">
+
+                    <div class="flex items-center justify-between">
+                        <h3 class="text-base font-semibold text-gray-800">Activity</h3>
+
+                        <div class="flex bg-gray-100 p-1 rounded-lg text-sm">
+                            <button class="px-3 py-1.5 rounded-md bg-white shadow text-gray-900 font-medium">
+                                All
+                            </button>
+                            <button class="px-3 py-1.5 rounded-md text-gray-600 hover:text-gray-900">
+                                Comments
+                            </button>
+                            <button class="px-3 py-1.5 rounded-md text-gray-600 hover:text-gray-900">
+                                History
+                            </button>
+                        </div>
+                    </div>
+
+
+                    <div class="bg-white border border-gray-200 rounded-xl shadow-sm p-4">
+
+                        <div class="relative mb-4">
+                            <div class="rounded-xl p-[2px] transition-all duration-300" [ngClass]="{
+                                'ai-border-glow': isMessageGenerating(),
+                                'border border-gray-200': !isMessageGenerating()
+                              }">
+                                <textarea rows="3" [value]="comment()" (input)="commentOnChange($event)"
+                                    placeholder="Write a comment…" class="w-full bg-white rounded-lg p-3 text-sm resize-none
+                                       focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent">
+                              </textarea>
+                            </div>
+
+                            <div *ngIf="isMessageGenerating()"
+                                class="absolute -top-3 left-4 text-xs font-semibold text-purple-600 bg-white px-2">
+                                Generating...
+                            </div>
+                        </div>
+
+
+                        <div class="flex flex-wrap gap-2 mb-4">
+                            <button (click)="generateChatSuggestion(`Suggest a reply`)" class="px-3 py-1.5 bg-gray-50 border border-gray-200 rounded-full text-xs
+                                 hover:bg-gray-100 hover:border-gray-300 transition cursor-pointer">
+                                Suggest a reply
+                            </button>
+
+                            <button (click)="generateChatSuggestion(`Suggest a reply`)" class="px-3 py-1.5 bg-gray-50 border border-gray-200 rounded-full text-xs
+                                 hover:bg-gray-100 hover:border-gray-300 transition cursor-pointer">
+                                Who is working on this?
+                            </button>
+
+                            <button (click)="generateChatSuggestion(`Suggest a reply`)" class="px-3 py-1.5 bg-gray-50 border border-gray-200 rounded-full text-xs
+                                 hover:bg-gray-100 hover:border-gray-300 transition cursor-pointer">
+                                Can I get more info?
+                            </button>
+                        </div>
+
+                        <div class="flex items-center justify-between">
+
+                            <div class="text-xs text-gray-400">
+                                Press Enter to submit
+                            </div>
+
+                            <button (click)="addComment()" class="px-5 py-2 bg-gray-900 text-white 
+                            cursor-pointer
+                            rounded-lg text-sm font-medium
+                            hover:bg-black active:scale-95 transition">
+                                Comment
+                            </button>
+
+                        </div>
+
+                    </div>
+                </div>
+
+
+                <!-- render comments -->
+                <div class="space-y-6 mt-2">
+
+
+                    <div *ngFor="let c of comments()" class="flex gap-3">
+
+                        <img [src]="c.user.avatar" class="w-9 h-9 rounded-full" />
+
+                        <div class="flex-1">
+
+                            <div class="flex items-center gap-2 justify-between">
+                                <div class="flex flex-col items-start justify-center gap-1">
+                                    <span class="font-semibold text-sm">{{c.user.username}}</span>
+                                    <span class="text-xs text-gray-500">
+                                        <span>{{dateFormatter(c.updatedAt)}}{{" "}}</span>
+                                        @if(c.edited) {
+                                        <span>(edited)</span>
+                                        }
+                                    </span>
+                                </div>
+
+                                <button *ngIf="store.user()?.id === c.user.id && editingCommentId() !== c.id"
+                                    (click)="startEdit(c)" class="text-gray-400 hover:text-gray-700 text-xs">
+                                    ✏️ Edit
+                                </button>
+                            </div>
+
+                            <p *ngIf="editingCommentId() !== c.id"
+                                class="text-gray-700 mt-3 text-sm whitespace-pre-line">
+                                {{c.content}}
+                            </p>
+
+                            <div *ngIf="editingCommentId() === c.id" class="mt-2 space-y-2">
+
+                                <textarea rows="3" [value]="editingText()" (input)="handleEditingComment($event)"
+                                    class="w-full border rounded-lg p-2 text-sm focus:outline-none focus:ring">
+                </textarea>
+
+                                <div class="flex gap-2">
+                                    <button (click)="saveEdit(c.id)"
+                                        class="px-3 py-1 text-xs bg-blue-600 text-white rounded">
+                                        Save
+                                    </button>
+
+                                    <button (click)="cancelEdit()" class="px-3 py-1 text-xs bg-gray-200 rounded">
+                                        Cancel
+                                    </button>
+                                </div>
+
+                            </div>
+
+                        </div>
+                    </div>
+
+
+                </div>
+
+            </div>
+
+        </div>
+
+        <div class="w-[340px] bg-white border-l border-gray-300 h-full flex flex-col shadow-xl">
+
+            <div class="flex items-center justify-between px-6 py-4 border-b border-gray-300 bg-[#FAFBFC]">
+                <h3 class="text-sm font-semibold text-gray-700 uppercase tracking-wider">
+                    Ticket Details
+                </h3>
+
+                <button (click)="toggleModal(null)"
+                    class="w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-200 transition">
+                    ✕
+                </button>
+            </div>
+
+            <div class="p-6 overflow-y-auto space-y-6">
+
+                <div class="bg-gray-50 rounded-xl p-4 border border-gray-300 shadow-lg">
+                    <p class="text-xs text-gray-500 mb-3 uppercase font-semibold tracking-wide">
+                        Assigned To
+                    </p>
+
+                    <div class="flex items-center gap-3">
+                        <img [src]="ticketInfo()?.assignedUser?.avatar || 'https://i.pravatar.cc/150?img=3'"
+                            class="w-10 h-10 rounded-full border shadow-sm" />
+
+                        <div>
+                            <p class="text-sm font-semibold text-gray-800">
+                                {{ ticketInfo()?.assignedUser?.username || 'Unassigned' }}
+                            </p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bg-gray-50 rounded-xl p-4 border border-gray-200 shadow-lg">
+                    <p class="text-xs text-gray-500 mb-3 uppercase font-semibold tracking-wide">
+                        Reported By
+                    </p>
+
+                    <div class="flex items-center gap-3">
+                        <img [src]="ticketInfo()?.reportedUser!.avatar || 'https://i.pravatar.cc/150?img=3'"
+                            class="w-10 h-10 rounded-full border shadow-sm" />
+
+                        <div>
+                            <p class="text-sm font-semibold text-gray-800">
+                                {{ ticketInfo()?.reportedUser!.username || 'Unassigned' }}
+                            </p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bg-gray-50 rounded-xl p-4 border border-gray-200 shadow-lg">
+                    <p class="text-xs text-gray-500 mb-2 uppercase font-semibold tracking-wide">
+                        Status
+                    </p>
+
+                    <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold" [ngClass]="{
+                    'bg-yellow-100 text-yellow-700': ticketInfo()?.status === 'TODO',
+                    'bg-blue-100 text-blue-700': ticketInfo()?.status === 'IN_PROGRESS',
+                    'bg-green-100 text-green-700': ticketInfo()?.status === 'DONE'
+                  }">
+                        {{ ticketInfo()?.status || 'N/A' }}
+                    </span>
+                </div>
+
+                <div class="bg-gray-50 rounded-xl p-4 border border-gray-200 shadow-lg">
+                    <p class="text-xs text-gray-500 mb-2 uppercase font-semibold tracking-wide">
+                        Priority
+                    </p>
+
+                    <span class="text-xs px-2 py-1 rounded"
+                        [ngClass]="store.getPriorityClasses(ticketInfo()?.priority!)">
+                        {{ store.PRIORITY_MAP[ticketInfo()?.priority!] }}
+                    </span>
+                </div>
+
+                <div class="bg-gray-50 rounded-xl p-4 border border-gray-200 shadow-lg">
+                    <p class="text-xs text-gray-500 mb-2 uppercase font-semibold tracking-wide">
+                        Type
+                    </p>
+
+                    <span class="text-sm font-semibold text-gray-800">
+                        {{ ticketInfo()?.type || 'N/A' }}
+                    </span>
+                </div>
+
+                <div class="text-xs text-gray-500 flex flex-col justify-center items-start">
+                    <span>Created {{dateFormatter(ticketInfo()!.createdAt)}}{{" "}}</span>
+                    <span>Last Updated {{dateFormatter(ticketInfo()!.updatedAt)}}{{" "}}</span>
+                </div>
+
+            </div>
+
+        </div>
+
+    </div>
+</div>
+}
