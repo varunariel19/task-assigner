@@ -1,11 +1,12 @@
-import { Component, EventEmitter, Output } from '@angular/core';
+import { Component, EventEmitter, Output, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Api } from '../../core/services/api';
 import { GlobalStore } from '../../core/store/store';
 import { ModalComponent } from '../modal/modal';
 import { FormData, FormType, Ticket } from '../../interface';
-import {  v4 as uuidV4 } from "uuid";
+import { v4 as uuidV4 } from 'uuid';
+import { LoaderService } from '../../services/loader.service';
 
 @Component({
   selector: 'app-create-ticket-form',
@@ -15,12 +16,12 @@ import {  v4 as uuidV4 } from "uuid";
 })
 export class CreateTicketFormComponent {
   @Output() submitForm = new EventEmitter<any>();
+  ticketCreating = signal(false);
 
-  constructor(
-    private api: Api,
-    public store: GlobalStore,
-    public modal: ModalComponent,
-  ) {}
+  private api = inject(Api);
+  private loaderService = inject(LoaderService);
+  store = inject(GlobalStore);
+  modal = inject(ModalComponent);
 
   options = ['TODO', 'IN_PROGRESS', 'REVIEW', 'DONE'];
   priority = [
@@ -29,21 +30,27 @@ export class CreateTicketFormComponent {
     { value: 3, label: 'Low' },
   ];
 
-  formData: FormData = {
-    title: '',
-    description: '',
-    priority: 3,
-    type: 'BUG',
-    status: 'TODO',
-    assignToId: '',
-  };
+  private defaultFormData(): FormData {
+    return {
+      taskId: '',
+      ticketId: null,
+      title: '',
+      description: '',
+      priority: 3,
+      type: 'BUG',
+      status: 'TODO',
+      assignToId: '',
+      reportedById: '',
+    };
+  }
+
+  formData: FormData = this.defaultFormData();
 
   updateField<K extends FormType>(field: K, value: FormData[K]) {
     this.formData[field] = value;
   }
-  submit() {
-    this.modal.close();
 
+  submit() {
     const { title, status, assignToId, priority, description, type } = this.formData;
     const reporter = this.store.user();
 
@@ -52,52 +59,64 @@ export class CreateTicketFormComponent {
       return;
     }
 
-    const assignedUser = this.store.users().find((user) => user.id == assignToId);
+    const assignedUser = this.store.users().find((u) => u.id == assignToId);
     if (!assignedUser) {
-      alert('User not exists !');
+      alert('User not exists!');
       return;
     }
+
+    this.modal.close();
+    this.loaderService.show();
+    const taskId = uuidV4();
+    const ticketId = Math.floor(Math.random() * (9999 - 100 + 1)) + 100;
+    const now = new Date().toString();
+
+    this.formData.reportedById = reporter.id;
+    this.formData.taskId = taskId;
+    this.formData.ticketId = ticketId;
+
     const data: Ticket = {
-      taskId: uuidV4(),
-      ticketId: String(Math.floor(Math.random() * (9999 - 100 + 1)) + 100),
+      taskId,
+      ticketId: ticketId.toString(),
       title,
       status,
-      assignedUser: assignedUser,
+      assignedUser,
       type,
       description,
-      priority: this.store.PRIORITY_MAP[priority],
+      priority: priority.toString(),
       allowedMembers: [],
       aiSummary: [],
-      createdAt: new Date(Date.now()).toString(),
-      updatedAt: new Date(Date.now()).toString(),
+      createdAt: now,
+      updatedAt: now,
       reportedUser: {
-        id: reporter!.id,
+        id: reporter.id,
         username: reporter.username,
         avatar: reporter.avatar,
       },
     };
 
-    console.log('data', data);
-
-    this.store.aisles.update((prev) => {
-      prev[status].push(data);
-      return prev;
-    });
+    this.store.tickets.update((prev) => [...prev, data]);
+    this.store.aisles.update((prev) => ({
+      ...prev,
+      [status]: [...prev[status], data],
+    }));
 
     this.api.addTask(this.formData).subscribe({
-      next: (res: any) => {
-        this.formData = {
-          title: '',
-          type: 'BUG',
-          priority: 3,
-          description: '',
-          status: 'TODO',
-          assignToId: '',
-        };
+      next: () => {
+        this.formData = this.defaultFormData();
+        this.loaderService.hide();
       },
       error: (err) => {
         console.error('Error creating ticket', err);
         alert('Failed to create ticket. Please try again.');
+
+        this.store.tickets.update((prev) => prev.filter((t) => t.taskId !== taskId));
+        this.store.aisles.update((prev) => ({
+          ...prev,
+          [status]: prev[status].filter((t) => t.taskId !== taskId),
+        }));
+
+        this.loaderService.hide();
       },
     });
   }

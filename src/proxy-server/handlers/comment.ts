@@ -5,7 +5,6 @@ import { prisma } from "../connection";
 export const handleAddComment = async (req: Request, res: Response) => {
     try {
         const { id, taskId, comment, commentedBy } = req.body.comment;
-        console.log("req body", req.body);
 
         if (!taskId || !comment) {
             return res.status(400).json({
@@ -84,7 +83,6 @@ export const handleEditComment = async (req: Request, res: Response) => {
 export const handleFetchAllComments = async (req: Request, res: Response) => {
     try {
         const taskId = req.params['taskId'] as string;
-        console.log("taskdId", taskId);
 
         if (!taskId || typeof taskId !== 'string') {
             res.status(404).json({ message: "task Id missing !!" });

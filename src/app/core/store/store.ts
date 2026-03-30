@@ -1,7 +1,7 @@
 import { Priority, Ticket, TicketStatus, User } from '../../interface';
 import { AuthService } from '../../services/auth.service';
 import { NavigationEnd, Router } from '@angular/router';
-import { Injectable, signal } from '@angular/core';
+import { Injectable, signal, effect } from '@angular/core';
 import { firstValueFrom, filter } from 'rxjs';
 import { Api } from '../services/api';
 
@@ -13,6 +13,7 @@ export class GlobalStore {
   loading = signal(false);
   loggedIn = signal<boolean>(false);
   userRole = signal<string>('USER');
+  filterByUser = signal<string | null>(null);
 
   aisles = signal<Record<TicketStatus, Ticket[]>>({
     TODO: [],
@@ -43,6 +44,21 @@ export class GlobalStore {
     private authService: AuthService,
   ) {
     this.waitForRouterThenInit();
+
+    effect(() => {
+      this.filterByUser();
+      this.updateAislesOnFilterChange();
+    });
+  }
+
+  //  When the value of filterByUser changes, we need to update the aisles to reflect the filtered tickets.
+  updateAislesOnFilterChange() {
+    const userId = this.filterByUser();
+    const allTickets = this.tickets();
+    const filteredTickets = userId
+      ? allTickets.filter((ticket) => ticket.assignedUser?.id === userId)
+      : allTickets;
+    this.aisles.set(this.groupTicketsByStatus(filteredTickets));
   }
 
   async waitForRouterThenInit() {
@@ -80,7 +96,6 @@ export class GlobalStore {
   checkLoggedIn() {
     const parsedToken = this.authService.getParsedToken();
     const visitedUrl = this.router.url;
-    console.log('parsed token ', parsedToken, visitedUrl);
 
     if (!parsedToken && !this.publicRoutes.includes(visitedUrl)) {
       this.router.navigate(['/']);

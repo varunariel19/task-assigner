@@ -6,18 +6,29 @@ import bcrypt from 'bcryptjs';
 
 const handleCreateNewTask = async (req: Request, res: Response) => {
   try {
-    const { priority, title, type, status, description, assignToId, reportedById } = req.body;
-    if (!title || !type || !reportedById) {
+    const {
+      taskId,
+      ticketId,
+      priority,
+      title,
+      type,
+      status,
+      description,
+      assignToId,
+      reportedById,
+    } = req.body;
+    if (!taskId || !ticketId || !title || !type || !reportedById) {
       res.status(404).json({ message: 'Task required information missing!' });
       return;
     }
 
     // add the task in the db..
-    const randomId = Math.floor(Math.random() * (9999 - 100 + 1)) + 100;
     await prisma.task.create({
       data: {
-        ticketId: randomId,
+        taskId: taskId,
+        ticketId: ticketId,
         reportedById: reportedById,
+        allowedMembers: assignToId ? [assignToId] : [],
         priority: Number(priority),
         title,
         type,

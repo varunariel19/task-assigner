@@ -1,7 +1,16 @@
-@import "tailwindcss";
+@import 'tailwindcss';
 
 angular-editor {
   font-family: 'Inter', 'Segoe UI', Arial, sans-serif;
+}
+
+.field-card {
+  @apply bg-white rounded-xl p-4 border border-gray-100 shadow-sm 
+         hover:border-gray-200 transition-colors duration-150;
+}
+
+.field-label {
+  @apply text-xs text-gray-400 mb-2.5 uppercase font-semibold tracking-wider;
 }
 
 /* Toolbar */
@@ -45,7 +54,6 @@ angular-editor {
   outline: none;
   border-color: #d1d5db;
 }
-
 
 .cdk-drag-preview {
   box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);

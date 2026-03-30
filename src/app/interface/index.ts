@@ -8,21 +8,24 @@ export const TicketStatus = {
 
 export type TicketStatus = keyof typeof TicketStatus;
 export type Priority = 'High' | 'Medium' | 'Low';
-export type FormType = keyof  FormData;
+export type FormType = keyof FormData;
 export interface FormData {
+  taskId: string;
+  ticketId: number | null;
   title: string;
   description: string;
   priority: number;
   type: string;
   status: TicketStatus;
   assignToId: string;
+  reportedById: string;
 }
 export interface Ticket {
   taskId: string;
   ticketId: string;
   title: string;
   description: string;
-  priority: Priority;
+  priority: Priority | string;
 
   aiSummary: string[];
   type: string;

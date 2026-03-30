@@ -31,9 +31,6 @@ export class AuthService {
     }
   }
 
-  isAdmin() {
-     
-  }
 
   isLoggedIn(): boolean {
     if (!this.isBrowser) return false;
