@@ -7,47 +7,134 @@ datasource db {
   provider = "postgresql"
 }
 
-model Task {
-  taskId         String    @id @default(uuid()) @db.Uuid
-  ticketId       Int
-  priority       Int       @default(3)
-  title          String
-  type           String
-  aiSummary      String[]  @default([])
-  description    String    @default("")
-  status         String    @default("TODO")
-  assignToId     String?   @db.Uuid
-  reportedById   String   @db.Uuid
-  createdAt      DateTime  @default(now())
-  updatedAt      DateTime  @updatedAt
-  comments       Comment[]
-  assignedUser   User?     @relation("AssignedTasks", fields: [assignToId], references: [id])
-  reportedUser   User     @relation("ReportedTasks", fields: [reportedById], references: [id])
-  allowedMembers String[]
+enum TicketStatus {
+  TODO
+  IN_PROGRESS
+  REVIEW
+  DONE
+}
+
+enum TicketPriority {
+  LOW
+  MEDIUM
+  HIGH
+}
+
+enum TicketType {
+  BUG
+  FEATURE
+  TASK
+  IMPROVEMENT
+  DOCUMENTATION
+}
+
+enum ChangeType {
+  STATUS
+  PRIORITY
+  TYPE
+  ASSIGNEE
+  TITLE
+  DESCRIPTION
+  AI_SUMMARY
+  COMMENTED
+  BOTH
+  CREATION
+  DELETION
 }
 
 model User {
-  id            String    @id @default(uuid()) @db.Uuid
-  username      String
-  role          String    @default("USER")
-  email         String    @unique
-  password      String
-  avatar        String
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
-  assignedTasks Task[]    @relation("AssignedTasks")
-  reportedTasks Task[]    @relation("ReportedTasks")
-  comments      Comment[]
+  id              String          @id @default(uuid()) @db.Uuid
+  username        String
+  role            String          @default("USER")
+  email           String          @unique
+  password        String
+  avatar          String
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+  assignedTasks   Task[]          @relation("AssignedTasks")
+  reportedTasks   Task[]          @relation("ReportedTasks")
+  comments        Comment[]
+  activityLogs    ActivityLog[]
+  ticketHistories TicketHistory[]
+}
+
+model Task {
+  taskId         String        @id @default(uuid()) @db.Uuid
+  ticketId       Int
+  priority       Int
+  title          String
+  type           TicketType
+  aiSummary      String[]      @default([])
+  description    String        @default("")
+  status         TicketStatus  @default(TODO)
+  assignToId     String?       @db.Uuid
+  reportedById   String        @db.Uuid
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+  allowedMembers String[]
+  comments       Comment[]
+  assignedUser   User?         @relation("AssignedTasks", fields: [assignToId], references: [id])
+  reportedUser   User          @relation("ReportedTasks", fields: [reportedById], references: [id])
+  activityLogs   ActivityLog[]
 }
 
 model Comment {
-  id        String   @id @default(uuid()) @db.Uuid
-  content   String
-  edited    Boolean  @default(false)
-  userId    String   @db.Uuid
-  ticketId  String   @db.Uuid
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  task      Task?    @relation(fields: [ticketId], references: [taskId])
-  user      User?    @relation(fields: [userId], references: [id])
+  id            String       @id @default(uuid()) @db.Uuid
+  content       String
+  edited        Boolean      @default(false)
+  userId        String       @db.Uuid
+  ticketId      String       @db.Uuid
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+  task          Task?        @relation(fields: [ticketId], references: [taskId])
+  user          User?        @relation(fields: [userId], references: [id])
+  activityLog   ActivityLog? @relation(fields: [activityLogId], references: [id])
+  activityLogId String?      @unique @db.Uuid
+}
+
+model ActivityLog {
+  id           String         @id @default(uuid()) @db.Uuid
+  changeType   ChangeType
+  summary      String
+  isReverted   Boolean        @default(false)
+  createdAt    DateTime       @default(now())
+  taskId       String         @db.Uuid
+  task         Task           @relation(fields: [taskId], references: [taskId], onDelete: Cascade)
+  userId       String         @db.Uuid
+  user         User           @relation(fields: [userId], references: [id])
+  fieldChanges FieldChange[]
+  comment      Comment?
+  revert       TicketHistory?
+
+  @@index([taskId])
+  @@index([userId])
+  @@index([changeType])
+  @@index([createdAt])
+  @@map("activity_logs")
+}
+
+model FieldChange {
+  id            String      @id @default(uuid()) @db.Uuid
+  field         String
+  fromValue     String      @db.Text
+  toValue       String      @db.Text
+  activityLogId String      @db.Uuid
+  activityLog   ActivityLog @relation(fields: [activityLogId], references: [id], onDelete: Cascade)
+
+  @@index([activityLogId])
+  @@map("field_changes")
+}
+
+model TicketHistory {
+  id               String      @id @default(uuid()) @db.Uuid
+  reason           String?
+  revertedAt       DateTime    @default(now())
+  restoredSnapshot Json
+  adminId          String      @db.Uuid
+  admin            User        @relation(fields: [adminId], references: [id])
+  activityLogId    String      @unique @db.Uuid
+  activityLog      ActivityLog @relation(fields: [activityLogId], references: [id], onDelete: Cascade)
+
+  @@index([adminId])
+  @@map("revert_logs")
 }

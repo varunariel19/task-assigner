@@ -50,13 +50,36 @@ const handleUpdateTicket = async (req: Request, res: Response) => {
   try {
     const { taskId, updates } = req.body;
 
+    console.log("updates" , updates);
+
     if (!taskId || !updates) {
       return;
     }
-
+    const { userId, info, changeType, ...actualUpdates } = updates;
+ 
+    console.log("Actual updates"  , actualUpdates);
     const updatedRecord = await prisma.task.update({
       where: { taskId: taskId },
-      data: updates,
+      data: actualUpdates,
+    });
+
+    const { summary, changes } = info;
+    const changedMap = Object.entries(changes).map(([key, value]: any) => ({
+      field: key,
+      fromValue: value.fromVal,
+      toValue: value.toVal,
+    }));
+
+    await prisma.activityLog.create({
+      data: {
+        changeType: changeType,
+        summary: summary,
+        taskId: updatedRecord.taskId,
+        userId: userId,
+        fieldChanges: {
+          create: changedMap,
+        },
+      },
     });
 
     if (!updatedRecord) {
@@ -121,8 +144,9 @@ const handleLogin = async (req: Request, res: Response) => {
       });
       return;
     }
+    const { password: actualPass, createdAt, updatedAt, ...userData } = user;
 
-    const isPasswordValid = await bcrypt.compare(password, user.password);
+    const isPasswordValid = await bcrypt.compare(password, actualPass);
 
     if (!isPasswordValid) {
       res.status(401).json({
@@ -138,12 +162,7 @@ const handleLogin = async (req: Request, res: Response) => {
       login: {
         ok: true,
         token,
-        user: {
-          id: user.id,
-          fullName: user.username,
-          email: user.email,
-          role: user.role,
-        },
+        user: userData,
       },
     });
     return;
@@ -211,7 +230,38 @@ const handleFetchAllUsers = async (req: Request, res: Response) => {
   }
 };
 
+const handleAddActivityLogs = async (req: Request, res: Response) => {
+  try {
+    const { changeType, summary, taskId, userId, fieldChanges } = req.body;
+
+    if (!changeType || !summary || !taskId || !userId) {
+      res.status(404).json({ message: 'Failed to save logs !' });
+      return;
+    }
+
+    await prisma.activityLog.create({
+      data: {
+        changeType,
+        summary,
+        taskId,
+        userId,
+        fieldChanges: fieldChanges ? fieldChanges : [],
+      },
+    });
+
+    res.status(200).json({ message: 'Logs saved !' });
+    return;
+  } catch (error: any) {
+    res.status(505).json({ message: `Internal server ${error.message}` });
+    return;
+  }
+};
+
+const handleUpdateTicketHistory = () => {};
+
 export {
+  handleUpdateTicketHistory,
+  handleAddActivityLogs,
   handleFetchAllUsers,
   handleCreateNewTask,
   handleFetchAllTask,

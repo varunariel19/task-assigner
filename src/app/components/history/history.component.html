@@ -1,0 +1,247 @@
+@if (isOpen) {
+  <div class="history-backdrop" (click)="close()"></div>
+
+  <div class="history-panel">
+    <!-- Header -->
+    <div class="panel-header">
+      <div class="header-left">
+        <span class="ticket-badge">#{{ ticketNo }}</span>
+        <div class="header-titles">
+          <h2 class="panel-title">Activity Log</h2>
+          <p class="panel-sub">Audit trail &amp; change history</p>
+        </div>
+      </div>
+      <button class="close-btn" (click)="close()">
+        <svg
+          width="16"
+          height="16"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2.5"
+          stroke-linecap="round"
+        >
+          <line x1="18" y1="6" x2="6" y2="18" />
+          <line x1="6" y1="6" x2="18" y2="18" />
+        </svg>
+      </button>
+    </div>
+
+    <!-- Filters -->
+    <div class="filters-bar">
+      <div class="search-wrap">
+        <svg
+          class="search-icon"
+          width="14"
+          height="14"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2.5"
+        >
+          <circle cx="11" cy="11" r="8" />
+          <line x1="21" y1="21" x2="16.65" y2="16.65" />
+        </svg>
+        <input class="search-input" [(ngModel)]="searchQuery" placeholder="Search activity..." />
+      </div>
+
+      <div class="filter-tabs">
+        <button
+          class="filter-tab"
+          [class.active]="filterType === 'all'"
+          (click)="filterType = 'all'"
+        >
+          All
+        </button>
+        <button
+          class="filter-tab"
+          [class.active]="filterType === 'status'"
+          (click)="filterType = 'status'"
+        >
+          Status
+        </button>
+        <button
+          class="filter-tab"
+          [class.active]="filterType === 'priority'"
+          (click)="filterType = 'priority'"
+        >
+          Priority
+        </button>
+        <button
+          class="filter-tab"
+          [class.active]="filterType === 'comment'"
+          (click)="filterType = 'comment'"
+        >
+          Comments
+        </button>
+        <button
+          class="filter-tab"
+          [class.active]="filterType === 'ai_summary'"
+          (click)="filterType = 'ai_summary'"
+        >
+          <span class="ai-dot"></span>AI
+        </button>
+      </div>
+    </div>
+
+    <!-- Log entries -->
+    <div class="log-stream">
+      @if (filteredLogs.length === 0) {
+        <div class="empty-state">
+          <svg
+            width="36"
+            height="36"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="1.5"
+          >
+            <circle cx="12" cy="12" r="10" />
+            <line x1="12" y1="8" x2="12" y2="12" />
+            <line x1="12" y1="16" x2="12.01" y2="16" />
+          </svg>
+          <p>No activity found</p>
+        </div>
+      }
+
+      @for (log of filteredLogs; track log.id) {
+        <div class="log-entry" [class.reverted]="isReverted(log.id)">
+          <!-- Timeline dot -->
+          <div class="timeline">
+            <div class="tl-dot" [class]="'tl-dot-' + log.changeType">
+              <span class="tl-icon">{{ getChangeTypeIcon(log.changeType) }}</span>
+            </div>
+            <div class="tl-line"></div>
+          </div>
+
+          <!-- Content -->
+          <div class="entry-content">
+            <div class="entry-top">
+              <!-- Left: Ticket + Action -->
+              <div class="entry-meta">
+                <span class="ticket-ref">#{{ log.ticketNo }}</span>
+                <span class="entry-badge" [class]="getChangeTypeBadgeClass(log.changeType)">
+                  {{ log.changeType === 'ai_summary' ? 'AI' : log.changeType }}
+                </span>
+              </div>
+
+              <!-- Right: Time + Revert -->
+              <div class="entry-actions">
+                <span class="entry-time">{{ formatTime(log.timestamp) }}</span>
+                @if (isAdmin && !isReverted(log.id) && log.changeType !== 'comment') {
+                  <button class="revert-btn" (click)="revertChange(log)" title="Revert this change">
+                    <svg
+                      width="12"
+                      height="12"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      stroke-width="2.5"
+                      stroke-linecap="round"
+                    >
+                      <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" />
+                      <path d="M3 3v5h5" />
+                    </svg>
+                    Revert
+                  </button>
+                }
+                @if (isReverted(log.id)) {
+                  <span class="reverted-badge">Reverted</span>
+                }
+              </div>
+            </div>
+
+            <!-- Action text -->
+            <p class="entry-action" [class.reverted-text]="isReverted(log.id)">{{ log.action }}</p>
+
+            <!-- Comment body -->
+            @if (log.changeType === 'comment' && log.comment) {
+              <div class="comment-bubble">
+                <p>{{ log.comment }}</p>
+              </div>
+            }
+
+            <!-- Inline field changes (simple: status, priority, assignee, type) -->
+            @if (log.changes.length > 0 && !hasTextDiff(log)) {
+              <div class="inline-changes">
+                @for (change of log.changes; track change.field) {
+                  <div class="change-pill">
+                    <span class="change-field">{{ change.field }}</span>
+                    <span class="change-from">{{ change.from }}</span>
+                    <svg
+                      width="10"
+                      height="10"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      stroke-width="2.5"
+                      stroke-linecap="round"
+                    >
+                      <line x1="5" y1="12" x2="19" y2="12" />
+                      <polyline points="12 5 19 12 12 19" />
+                    </svg>
+                    <span class="change-to">{{ change.to }}</span>
+                  </div>
+                }
+              </div>
+            }
+
+            <!-- Expandable diff for text fields -->
+            @if (hasTextDiff(log)) {
+              <button class="diff-toggle" (click)="toggleDiff(log.id)">
+                <svg
+                  width="12"
+                  height="12"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2.5"
+                  stroke-linecap="round"
+                  [style.transform]="isDiffExpanded(log.id) ? 'rotate(180deg)' : 'rotate(0deg)'"
+                >
+                  <polyline points="6 9 12 15 18 9" />
+                </svg>
+                {{ isDiffExpanded(log.id) ? 'Hide' : 'View' }} changes ({{
+                  log.changes.length
+                }}
+                field{{ log.changes.length > 1 ? 's' : '' }})
+              </button>
+
+              @if (isDiffExpanded(log.id)) {
+                <div class="diff-panel">
+                  @for (change of log.changes; track change.field) {
+                    <div class="diff-block">
+                      <div class="diff-field-label">{{ change.field }}</div>
+                      <div class="diff-cols">
+                        <div class="diff-col diff-before">
+                          <span class="diff-label">Before</span>
+                          <p>{{ change.from }}</p>
+                        </div>
+                        <div class="diff-col diff-after">
+                          <span class="diff-label">After</span>
+                          <p>{{ change.to }}</p>
+                        </div>
+                      </div>
+                    </div>
+                  }
+                </div>
+              }
+            }
+
+            <!-- User row -->
+            <div class="user-row">
+              <div class="avatar" [style.background]="log.user.color">{{ log.user.initials }}</div>
+              <span class="user-name">{{ log.user.name }}</span>
+              @if (log.user.isAdmin) {
+                <span class="admin-badge">Admin</span>
+              }
+              @if (log.changeType === 'ai_summary') {
+                <span class="ai-badge"> <span class="ai-dot-sm"></span>AI Generated </span>
+              }
+            </div>
+          </div>
+        </div>
+      }
+    </div>
+  </div>
+}

@@ -72,4 +72,33 @@ export interface Comment {
   };
 }
 
+interface FieldChange {
+  fromVal: string;
+  toVal: string;
+}
+
+interface UpdateInfo {
+  summary: string;
+  changes: Partial<Record<ChangeKey, FieldChange>>;
+}
+
+export interface Updates {
+  title?: string;
+  status?: string;
+  description?: string;
+  userId: string;
+  changeType: string;
+  info: UpdateInfo;
+}
+
+export type ChangeKey =
+  | 'STATUS'
+  | 'PRIORITY'
+  | 'TYPE'
+  | 'ASSIGNEE'
+  | 'TITLE'
+  | 'DESCRIPTION'
+  | 'CREATION'
+  | 'DELETION';
+
 export type PromptGenerator = (script: string, dynamicPayload: string) => string;

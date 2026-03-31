@@ -78,7 +78,7 @@
           @if (!isEditing()) {
             <div class="overflow-auto" [innerHTML]="ticketInfo()?.description"></div>
           } @else {
-            <app-ticket-editor [htmlContent]="ticketInfo()!.description"></app-ticket-editor>
+            <app-ticket-editor [htmlContent]="ticketInfo()?.description ?? ''"></app-ticket-editor>
           }
         </div>
 
@@ -355,28 +355,32 @@
           </button>
         </div>
 
-        <div class="p-4 overflow-y-auto space-y-3">
+        <div class="p-4 overflow-y-auto space-y-2.5">
           <!-- Assigned To -->
           <div class="field-card group">
             <p class="field-label">Assigned To</p>
             <div class="flex items-center gap-3">
               <img
                 [src]="ticketInfo()?.assignedUser?.avatar || 'https://i.pravatar.cc/150?img=3'"
-                class="w-9 h-9 rounded-full border border-gray-200 object-cover shrink-0"
+                class="w-9 h-9 rounded-full border-2 border-white shadow-sm object-cover shrink-0 ring-2 ring-gray-100"
               />
               @if (store.checkAdmin()) {
                 <div class="relative flex items-center flex-1">
                   <select
                     [value]="ticketInfo()?.assignedUser?.id"
                     (change)="onAssignedUserChange($event)"
-                    class="appearance-none bg-transparent border-none outline-none cursor-pointer text-sm font-medium text-gray-900 pr-5 w-full"
+                    class="modern-select w-full"
                   >
-                    <option *ngFor="let user of store.users()" [value]="user.id">
+                    <option
+                      *ngFor="let user of store.users()"
+                      [selected]="user.id === ticketInfo()?.assignedUser?.id"
+                      [value]="user.id"
+                    >
                       {{ user.username }}
                     </option>
                   </select>
                   <svg
-                    class="absolute right-0 pointer-events-none text-gray-400 shrink-0"
+                    class="select-chevron"
                     width="12"
                     height="12"
                     viewBox="0 0 12 12"
@@ -405,12 +409,15 @@
             <div class="flex items-center gap-3">
               <img
                 [src]="ticketInfo()?.reportedUser?.avatar || 'https://i.pravatar.cc/150?img=3'"
-                class="w-9 h-9 rounded-full border border-gray-200 object-cover shrink-0"
+                class="w-9 h-9 rounded-full border-2 border-white shadow-sm object-cover shrink-0 ring-2 ring-gray-100"
               />
               <span class="text-sm font-medium text-gray-900">
                 {{ ticketInfo()?.reportedUser?.username || 'Unassigned' }}
               </span>
-              <span class="ml-auto text-xs text-gray-400">Reporter</span>
+              <span
+                class="ml-auto text-[10px] font-semibold uppercase tracking-widest text-gray-400 bg-gray-100 px-2 py-0.5 rounded-full"
+                >Reporter</span
+              >
             </div>
           </div>
 
@@ -422,26 +429,32 @@
                 <select
                   [value]="ticketInfo()?.status"
                   (change)="onStatusChange($event)"
-                  class="appearance-none border-none outline-none cursor-pointer text-xs font-medium pl-2.5 pr-7 py-1 rounded-full"
+                  class="badge-select appearance-none border-none outline-none cursor-pointer text-xs font-semibold pl-3 pr-7 py-1.5 rounded-full transition-all duration-200"
                   [ngClass]="{
-                    'bg-yellow-100 text-yellow-800': ticketInfo()?.status === 'TODO',
-                    'bg-blue-100 text-blue-800': ticketInfo()?.status === 'IN_PROGRESS',
-                    'bg-green-100 text-green-800': ticketInfo()?.status === 'DONE',
+                    'bg-amber-50 text-amber-700 ring-1 ring-amber-200 hover:bg-amber-100':
+                      ticketInfo()?.status === 'TODO',
+                    'bg-blue-50 text-blue-700 ring-1 ring-blue-200 hover:bg-blue-100':
+                      ticketInfo()?.status === 'IN_PROGRESS',
+                    'bg-violet-50 text-violet-700 ring-1 ring-violet-200 hover:bg-violet-100':
+                      ticketInfo()?.status === 'REVIEW',
+                    'bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200 hover:bg-emerald-100':
+                      ticketInfo()?.status === 'DONE',
                   }"
                 >
-                  <option *ngFor="let s of ticketStatusTypes" [value]="s">{{ s }}</option>
+                  <option
+                    *ngFor="let s of ticketStatusTypes"
+                    [selected]="s === ticketInfo()?.status"
+                    [value]="s"
+                  >
+                    {{ s }}
+                  </option>
                 </select>
                 <svg
-                  class="absolute right-2 pointer-events-none"
+                  class="absolute right-2 pointer-events-none opacity-60"
                   width="10"
                   height="10"
                   viewBox="0 0 12 12"
                   fill="none"
-                  [ngClass]="{
-                    'text-yellow-600': ticketInfo()?.status === 'TODO',
-                    'text-blue-600': ticketInfo()?.status === 'IN_PROGRESS',
-                    'text-green-600': ticketInfo()?.status === 'DONE',
-                  }"
                 >
                   <path
                     d="M2 4l4 4 4-4"
@@ -454,11 +467,16 @@
               </div>
             } @else {
               <span
-                class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium"
+                class="inline-flex items-center px-3 py-1.5 rounded-full text-xs font-semibold"
                 [ngClass]="{
-                  'bg-yellow-100 text-yellow-800': ticketInfo()?.status === 'TODO',
-                  'bg-blue-100 text-blue-800': ticketInfo()?.status === 'IN_PROGRESS',
-                  'bg-green-100 text-green-800': ticketInfo()?.status === 'DONE',
+                  'bg-amber-50 text-amber-700 ring-1 ring-amber-200':
+                    ticketInfo()?.status === 'TODO',
+                  'bg-blue-50 text-blue-700 ring-1 ring-blue-200':
+                    ticketInfo()?.status === 'IN_PROGRESS',
+                  'bg-violet-50 text-violet-700 ring-1 ring-violet-200':
+                    ticketInfo()?.status === 'REVIEW',
+                  'bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200':
+                    ticketInfo()?.status === 'DONE',
                 }"
                 >{{ ticketInfo()?.status || 'N/A' }}</span
               >
@@ -473,13 +491,19 @@
                 <select
                   [value]="ticketInfo()?.priority"
                   (change)="onPriorityChange($event)"
-                  class="appearance-none border-none outline-none cursor-pointer text-xs font-medium pl-2.5 pr-7 py-1 rounded-full"
+                  class="badge-select appearance-none border-none outline-none cursor-pointer text-xs font-semibold pl-3 pr-7 py-1.5 rounded-full transition-all duration-200"
                   [ngClass]="store.getPriorityClasses(ticketInfo()?.priority!)"
                 >
-                  <option *ngFor="let p of priorityOptions" [value]="p.key">{{ p.value }}</option>
+                  <option
+                    *ngFor="let p of priorityOptions"
+                    [selected]="p.key == ticketInfo()?.priority"
+                    [value]="p.key"
+                  >
+                    {{ p.value }}
+                  </option>
                 </select>
                 <svg
-                  class="absolute right-2 pointer-events-none text-current opacity-60"
+                  class="absolute right-2 pointer-events-none opacity-60"
                   width="10"
                   height="10"
                   viewBox="0 0 12 12"
@@ -496,7 +520,7 @@
               </div>
             } @else {
               <span
-                class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium"
+                class="inline-flex items-center px-3 py-1.5 rounded-full text-xs font-semibold"
                 [ngClass]="store.getPriorityClasses(ticketInfo()?.priority!)"
               >
                 {{ store.PRIORITY_MAP[ticketInfo()?.priority!] }}
@@ -512,17 +536,17 @@
                 <select
                   [value]="ticketInfo()?.type"
                   (change)="onTypeChange($event)"
-                  class="appearance-none w-full border border-gray-200 bg-gray-50 outline-none cursor-pointer text-sm font-medium text-gray-900 pl-3 pr-8 py-1.5 rounded-lg hover:border-gray-300 transition-colors"
+                  class="modern-select w-full"
                 >
-                  <option *ngFor="let item of typeOptions" [value]="item">{{ item }}</option>
+                  <option
+                    *ngFor="let item of typeOptions"
+                    [selected]="item === ticketInfo()?.type"
+                    [value]="item"
+                  >
+                    {{ item }}
+                  </option>
                 </select>
-                <svg
-                  class="absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none text-gray-400"
-                  width="12"
-                  height="12"
-                  viewBox="0 0 12 12"
-                  fill="none"
-                >
+                <svg class="select-chevron" width="12" height="12" viewBox="0 0 12 12" fill="none">
                   <path
                     d="M2 4l4 4 4-4"
                     stroke="currentColor"
@@ -540,13 +564,42 @@
           </div>
 
           <!-- Timestamps -->
-          <div class="flex flex-col gap-1 px-1 pt-1">
-            <span class="text-xs text-gray-400 flex items-center gap-1.5">
-              <span class="w-1.5 h-1.5 rounded-full bg-gray-300 inline-block"></span>
+          <div class="flex flex-col gap-1.5 px-1 pt-2 border-t border-gray-100 mt-1">
+            <span class="text-xs text-gray-400 flex items-center gap-2">
+              <svg
+                width="12"
+                height="12"
+                viewBox="0 0 16 16"
+                fill="none"
+                class="text-gray-300 shrink-0"
+              >
+                <circle cx="8" cy="8" r="6.5" stroke="currentColor" stroke-width="1.4" />
+                <path
+                  d="M8 5v3.5l2 1.5"
+                  stroke="currentColor"
+                  stroke-width="1.4"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                />
+              </svg>
               Created {{ dateFormatter(ticketInfo()!.createdAt) }}
             </span>
-            <span class="text-xs text-gray-400 flex items-center gap-1.5">
-              <span class="w-1.5 h-1.5 rounded-full bg-gray-300 inline-block"></span>
+            <span class="text-xs text-gray-400 flex items-center gap-2">
+              <svg
+                width="12"
+                height="12"
+                viewBox="0 0 16 16"
+                fill="none"
+                class="text-gray-300 shrink-0"
+              >
+                <path
+                  d="M2 8c0-3.314 2.686-6 6-6a6 6 0 0 1 5.91 5M14 8l-1 1-1-1"
+                  stroke="currentColor"
+                  stroke-width="1.4"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                />
+              </svg>
               Updated {{ dateFormatter(ticketInfo()!.updatedAt) }}
             </span>
           </div>

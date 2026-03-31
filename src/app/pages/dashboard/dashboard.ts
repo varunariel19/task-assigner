@@ -8,19 +8,30 @@ import { CommonModule } from '@angular/common';
 import { Api } from '../../core/services/api';
 import { DragDropModule, CdkDragDrop, moveItemInArray } from '@angular/cdk/drag-drop';
 import { TicketStatus } from '../../interface';
+import { HistoryComponent } from '../../components/history/history.component';
 
 @Component({
   selector: 'app-dashboard',
-  imports: [CommonModule, FontAwesomeModule, ModalComponent, ViewTicketComponent, DragDropModule],
+  imports: [
+    CommonModule,
+    FontAwesomeModule,
+    ModalComponent,
+    ViewTicketComponent,
+    DragDropModule,
+    HistoryComponent,
+  ],
   standalone: true,
   templateUrl: './dashboard.html',
 })
 export class DashboardComponent implements AfterViewInit {
+  appName = signal('T-Asssigner');
   appIcons = AppIcons;
 
+  historyOverlay = signal(false);
+  
   @ViewChild(ModalComponent, { static: false }) modal?: ModalComponent;
   @ViewChild(ViewTicketComponent, { static: false }) viewTicketModal?: ViewTicketComponent;
-  appName = signal('T-Asssigner');
+  @ViewChild(HistoryComponent, { static: false }) historyModal?: HistoryComponent;
 
   constructor(
     private api: Api,

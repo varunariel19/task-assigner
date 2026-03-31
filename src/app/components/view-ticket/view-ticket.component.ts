@@ -10,11 +10,12 @@ import {
 import { GlobalStore } from '../../core/store/store';
 import { CommonModule } from '@angular/common';
 import { Api } from '../../core/services/api';
-import { Comment, Priority, Ticket } from '../../interface';
+import { ChangeKey, Comment, Priority, Ticket, Updates } from '../../interface';
 import { v4 as uuidv4 } from 'uuid';
 import { formatTime12h } from '../../utils';
 import { GoogleAiService } from '../../core/services/ai-modal';
 import { TicketEditorComponent } from '../editor/ticket-editor.component';
+
 @Component({
   selector: 'view-ticket-modal',
   standalone: true,
@@ -52,9 +53,14 @@ export class ViewTicketComponent implements AfterViewInit {
 
   private previousTicketId: string | null = null;
 
-  ticketStatusTypes = ['TODO', 'IN_PROGRESS', 'DONE'];
+  ticketStatusTypes = ['TODO', 'IN_PROGRESS', 'REVIEW', 'DONE'];
   priorityOptions: { key: string; value: Priority }[] = [];
   typeOptions = ['BUG', 'FEATURE', 'TASK'];
+
+  //  ticket previous states
+
+  ticketTitle = '';
+  ticketDescription = '';
 
   constructor(
     private ai: GoogleAiService,
@@ -68,10 +74,11 @@ export class ViewTicketComponent implements AfterViewInit {
 
     effect(() => {
       const ticket = this.ticketInfo();
-
       if (!ticket?.taskId) return;
 
       if (this.previousTicketId !== ticket.taskId) {
+        this.ticketTitle = ticket.title;
+        this.ticketDescription = ticket.description;
         this.previousTicketId = ticket.taskId;
         this.resetFields();
         this.fetchComments(ticket.taskId);
@@ -81,37 +88,66 @@ export class ViewTicketComponent implements AfterViewInit {
   ngAfterViewInit(): void {}
 
   handleUpdateTicket() {
-    let updatedTicket = this.ticketInfo();
-    if (this.modal!.htmlContent) {
-      updatedTicket!.description = this.modal!.htmlContent;
+    const updatedTicket = this.ticketInfo();
+
+    if (this.modal?.htmlContent) {
+      updatedTicket!.description = this.modal.htmlContent;
     }
 
-    const now = String(new Date(Date.now()));
-    updatedTicket!.updatedAt = now;
+    updatedTicket!.updatedAt = String(new Date(Date.now()));
     this.ticketInfo.set(updatedTicket);
 
-    if (!updatedTicket) return;
-
     this.store.tickets.update((prev) =>
-      prev.map((ticket) => (ticket.taskId === updatedTicket.taskId ? updatedTicket : ticket)),
+      prev.map((ticket) => (ticket.taskId === updatedTicket!.taskId ? updatedTicket! : ticket)),
     );
 
     this.store.aisles.update((prev) => {
-      const updatedArray = prev[updatedTicket.status].map((each) =>
-        each.taskId === updatedTicket.taskId ? updatedTicket : each,
+      const updatedAisle = prev[updatedTicket!.status].map((each) =>
+        each.taskId === updatedTicket!.taskId ? updatedTicket : each,
       );
-      return { ...prev, [updatedTicket.status]: [...updatedArray] };
+      return { ...prev, [updatedTicket!.status]: updatedAisle };
     });
 
+    const changedFields: Record<'TITLE' | 'DESCRIPTION', { fromVal: string; toVal: string }> =
+      {} as any;
+
+    if (this.ticketTitle !== updatedTicket!.title) {
+      changedFields.TITLE = { fromVal: this.ticketTitle, toVal: updatedTicket!.title };
+    }
+    if (this.ticketDescription !== updatedTicket!.description) {
+      changedFields.DESCRIPTION = {
+        fromVal: this.ticketDescription,
+        toVal: updatedTicket!.description,
+      };
+    }
+
     this.isEditing.set(false);
-    const updates = { title: updatedTicket.title, description: updatedTicket.description };
-    this.api.updateTicket(updatedTicket.taskId, updates).subscribe({
-      next: (res: any) => {
-        console.log(res.message);
-      },
-      error: (err) => {
-        console.log(err);
-      },
+
+    const changedKeys = Object.keys(changedFields) as ('TITLE' | 'DESCRIPTION')[];
+    if (changedKeys.length === 0) return;
+
+    const changeType =
+      changedKeys.length === 2 ? 'BOTH' : changedKeys[0] === 'TITLE' ? 'TITLE' : 'DESCRIPTION';
+
+    console.log('changed ', changeType, changedFields);
+    const summary =
+      changeType === 'BOTH'
+        ? 'Updated Title & Description'
+        : changeType === 'TITLE'
+          ? 'Updated Title'
+          : 'Updated Description';
+
+    const updates: Updates = {
+      title: updatedTicket!.title,
+      description: updatedTicket!.description,
+      userId: this.store.user()!.id,
+      changeType,
+      info: { summary, changes: changedFields },
+    };
+
+    this.api.updateTicket(updatedTicket!.taskId, updates).subscribe({
+      next: (res: any) => console.log(res.message),
+      error: (err) => console.error(err),
     });
   }
 
@@ -162,6 +198,8 @@ export class ViewTicketComponent implements AfterViewInit {
     const user = this.store.user();
     const ticket = this.ticketInfo();
     const content = this.comment();
+
+    console.log('current user !!', user);
 
     if (!user || !ticket?.taskId || !content.trim()) return;
 
@@ -491,26 +529,141 @@ export class ViewTicketComponent implements AfterViewInit {
   }
 
   onStatusChange(event: Event) {
-    const val = (event.target as HTMLSelectElement).value as 'TODO' | 'IN_PROGRESS' | 'DONE';
+    let prevStatus = this.ticketInfo()!.status;
+
+    const val = (event.target as HTMLSelectElement).value as
+      | 'TODO'
+      | 'IN_PROGRESS'
+      | 'DONE'
+      | 'REVIEW';
+
     this.ticketInfo.update((prev: Ticket | null) => {
       if (!prev) return null;
       return { ...prev, status: val };
     });
+
+    this.store.tickets.update((prev) => {
+      return prev.map((each) => {
+        if (each.taskId !== this.ticketInfo()?.taskId) return each;
+        return { ...each, status: val };
+      });
+    });
+
+    const updates = this.createUpdate('status', 'STATUS', prevStatus, val);
+
+    this.api.updateTicket(this.ticketInfo()!.taskId, updates).subscribe({
+      next: (res: any) => {
+        console.log('status updated !!');
+      },
+    });
   }
 
   onAssignedUserChange(event: Event) {
+    const prevState = this.ticketInfo()!.assignedUser!.id;
     const userId = (event.target as HTMLSelectElement).value;
     const selectedUser = this.store.users().find((u) => u.id === userId);
     this.ticketInfo.set({ ...this.ticketInfo()!, assignedUser: selectedUser });
+
+    this.store.tickets.update((prev) => {
+      return prev.map((each) => {
+        if (each.taskId !== this.ticketInfo()?.taskId) return each;
+        return { ...each, assignedUser: selectedUser };
+      });
+    });
+
+    const updates = this.createUpdate('assignToId', 'ASSIGNEE', prevState, userId);
+
+    this.api.updateTicket(this.ticketInfo()!.taskId, updates).subscribe({
+      next: (res: any) => {
+        console.log('updated assigned User!!');
+      },
+    });
   }
 
   onPriorityChange(event: Event) {
+    const prevState = this.ticketInfo()!.priority;
     const value = (event.target as HTMLSelectElement).value;
     this.ticketInfo.set({ ...this.ticketInfo()!, priority: value });
+
+    this.store.tickets.update((prev) => {
+      return prev.map((each) => {
+        if (each.taskId !== this.ticketInfo()?.taskId) return each;
+        return { ...each, priority: value };
+      });
+    });
+
+    const updates = this.createUpdate('priority', 'PRIORITY', prevState, value);
+    console.log('updates of priority', updates);
+    this.api.updateTicket(this.ticketInfo()!.taskId, updates).subscribe({
+      next: (res: any) => {
+        console.log('priority updated !!');
+      },
+    });
   }
 
   onTypeChange(event: Event) {
+    const prevState = this.ticketInfo()!.type;
     const value = (event.target as HTMLSelectElement).value;
     this.ticketInfo.set({ ...this.ticketInfo()!, type: value });
+
+    this.store.tickets.update((prev) => {
+      return prev.map((each) => {
+        if (each.taskId !== this.ticketInfo()?.taskId) return each;
+        return { ...each, type: value };
+      });
+    });
+
+    const updates = this.createUpdate('type', 'TYPE', prevState, value);
+
+    this.api.updateTicket(this.ticketInfo()!.taskId, updates).subscribe({
+      next: (res: any) => {
+        console.log('Type updated !!');
+      },
+    });
+  }
+
+  createUpdate(item: string, type: ChangeKey, prevVal: string, newVal: string): Updates {
+    const summaryMap: Record<ChangeKey, string> = {
+      STATUS: `Changed Status ${prevVal} -> ${newVal}`,
+      TYPE: `Changed Type ${prevVal} -> ${newVal}`,
+      ASSIGNEE: `Changed Assignee ${prevVal} -> ${newVal}`,
+      PRIORITY: `Changed Priority ${this.store.PRIORITY_MAP[prevVal]} -> ${this.store.PRIORITY_MAP[newVal]}`,
+      TITLE: `Changed Title ${prevVal} -> ${newVal}`,
+      DESCRIPTION: `Updated Description`,
+      CREATION: `Ticket has been created !`,
+      DELETION: `Ticket has been deleted !`,
+    };
+
+    if (item == 'priority') {
+      return {
+        [`${item}`]: Number(newVal),
+        userId: this.store.user()!.id,
+        changeType: type,
+        info: {
+          summary: summaryMap[type],
+          changes: {
+            [type]: {
+              fromVal: this.store.PRIORITY_MAP[prevVal],
+              toVal: this.store.PRIORITY_MAP[newVal],
+            },
+          },
+        },
+      };
+    }
+
+    return {
+      [`${item}`]: newVal,
+      userId: this.store.user()!.id,
+      changeType: type,
+      info: {
+        summary: summaryMap[type],
+        changes: {
+          [type]: {
+            fromVal: prevVal,
+            toVal: newVal,
+          },
+        },
+      },
+    };
   }
 }
